@@ -767,54 +767,46 @@ document.addEventListener('DOMContentLoaded', () => {
     cardViewPopup.classList.remove('hidden');
   }
 
-  notificationsBtn.onclick = () => {
-    const githubUsername = prompt('Введите ваш GitHub логин:');
-    if (!githubUsername) return;
+  // Обработчик кнопки уведомлений
+  if (notificationsBtn) {
+    notificationsBtn.onclick = () => {
+      const githubUsername = prompt('Введите ваш GitHub логин:');
+      if (!githubUsername) return;
 
-    // Открываем Telegram бота в новом окне
-    window.open('https://t.me/TrelloCloneBot', '_blank');
-    
-    // Показываем инструкции
-    alert(
-      'Для подписки на уведомления:\n\n' +
-      '1. Откройте бота в Telegram\n' +
-      '2. Отправьте команду /start\n' +
-      '3. Введите ваш GitHub логин\n\n' +
-      'После этого вы будете получать уведомления за день до дедлайна задачи.'
-    );
-  };
+      // Открываем Telegram бота в новом окне
+      window.open('https://t.me/TrelloCloneBot', '_blank');
+      
+      // Показываем инструкции
+      alert(
+        'Для подписки на уведомления:\n\n' +
+        '1. Откройте бота в Telegram\n' +
+        '2. Отправьте команду /start\n' +
+        '3. Введите ваш GitHub логин\n\n' +
+        'После этого вы будете получать уведомления за день до дедлайна задачи.'
+      );
+    };
 
-  // Функция для отправки данных на сервер
-  async function syncBoardsWithServer() {
-    try {
-      const boards = loadAllBoards();
-      const serverUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-        ? 'http://localhost:8000'
-        : 'https://ВАШ_СЕРВЕР.herokuapp.com'; // Здесь позже нужно будет заменить на реальный URL сервера
-      
-      const response = await fetch(`${serverUrl}/sync-boards`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ boards }),
-      });
-      
-      if (!response.ok) {
-        throw new Error('Ошибка синхронизации с сервером');
+    // Добавляем кнопку для тестирования уведомлений
+    const testNotificationBtn = document.createElement('button');
+    testNotificationBtn.textContent = '🔔 Тест уведомлений';
+    testNotificationBtn.className = 'test-notification-btn';
+    testNotificationBtn.onclick = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/test-notification', {
+          method: 'POST'
+        });
+        const result = await response.json();
+        if (result.status === 'success') {
+          alert('Тестовое уведомление отправлено! Проверьте Telegram.');
+        } else {
+          alert('Ошибка: ' + result.message);
+        }
+      } catch (error) {
+        alert('Ошибка при отправке тестового уведомления: ' + error.message);
       }
-    } catch (error) {
-      console.error('Ошибка синхронизации:', error);
-    }
+    };
+    document.querySelector('.sidebar').appendChild(testNotificationBtn);
   }
-
-  // Синхронизируем данные при каждом изменении
-  const originalSaveState = saveState;
-  saveState = function() {
-    originalSaveState();
-    syncBoardsWithServer();
-  };
-
 });
 
 async function sendTelegramNotification(task, deadline) {

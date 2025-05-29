@@ -160,4 +160,24 @@ async def startup_event():
 async def sync_boards(boards: dict):
     global boards_data
     boards_data = boards
-    return {"message": "Boards synchronized successfully"} 
+    return {"message": "Boards synchronized successfully"}
+
+@app.post("/test-notification")
+async def test_notification():
+    try:
+        # Получаем все подписки
+        db = SessionLocal()
+        subscriptions = db.query(UserSubscription).all()
+        
+        # Отправляем тестовое уведомление каждому подписчику
+        for sub in subscriptions:
+            await bot.send_message(
+                chat_id=sub.telegram_chat_id,
+                text="🔔 Тестовое уведомление!\n\nЭто тестовое сообщение для проверки работы системы уведомлений."
+            )
+        
+        return {"status": "success", "message": "Тестовые уведомления отправлены"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+    finally:
+        db.close() 
