@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>To-Do Board</title>
+
+  <!-- Стили -->
+  <link rel="stylesheet" href="style.css?_v=1" /> 
+  <link href="https://fonts.googleapis.com/css2?family=Neucha&display=swap" rel="stylesheet">
+
+
+
+  <!-- FullCalendar -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
+</head>
+<body>
+
+  <!-- Стартовый экран -->
+  <div id="startScreen" class="start-screen fade-in">
+    <h1 class="big-title">Все начинается с доски</h1>
+    <div class="create-board">
+      <input type="text" id="boardName" placeholder="Введите название доски" />
+      <div id="nameError" class="error-message hidden"></div>
+      <button id="createBoardBtn">Создать доску</button>
+    </div>
+    <h2 class="choose-title">Или выберите доску:</h2>
+    <div id="boardList" class="board-list"></div>
+  </div>
+
+  <!-- Экран с вводом колонок -->
+  <div id="columnSetup" class="start-screen hidden">
+    <h1>Введите названия колонок</h1>
+    <input type="text" class="column-input" placeholder="Колонка 1" />
+    <input type="text" class="column-input" placeholder="Колонка 2" />
+    <input type="text" class="column-input" placeholder="Колонка 3" />
+    <button id="setupColumnsBtn">Продолжить</button>
+  </div>
+
+  <!-- Основная доска -->
+  <div class="board hidden" id="mainBoard">
+    <div class="sidebar">
+      <button id="backToStartBtn" class="sidebar-btn">← Назад</button>
+      <button id="addColumnBtn" class="sidebar-btn">➕ Добавить колонку</button>
+      <button id="calendarViewBtn" class="sidebar-btn">📅 Календарь</button>
+      <button id="tableViewBtn" class="sidebar-btn">📋 Таблица</button>
+      <button id="notificationsBtn" class="sidebar-btn">🔔 Уведомления</button>
+    </div>
+  
+    <!-- Важно: вот этот контейнер нужен! -->
+    <div class="board-content">
+      <div class="columns-container">
+        <div class="columns" id="columns"></div>
+      </div>
+    </div>
+  </div>
+  
+
+  <!-- Модалка -->
+  <div id="cardModal" class="modal hidden">
+    <div class="modal-content">
+      
+      <textarea id="cardText" placeholder="Введите задачу..."></textarea>
+      <textarea id="cardDescription" placeholder="Описание..." rows="3"></textarea>
+  
+      <div class="tag-section">
+        <label for="cardTags">Теги:</label>
+        <select id="cardTags">
+          <option value="важно">Важно</option>
+          <option value="срочно">Срочно</option>
+          <option value="личное">Личное</option>
+          <option value="работа">Работа</option>
+          <option value="учёба">Учёба</option>
+          <option value="другое">Другое...</option>
+        </select>
+        <input type="text" id="customTagInput" class="hidden" placeholder="Введите свой тег" />
+      </div>
+  
+      <div class="date-time-section">
+        <div class="date-field">
+          <label for="cardDate">Дата:</label>
+      <input type="date" id="cardDate" />
+        </div>
+        <div class="time-field">
+          <label for="cardTime">Время:</label>
+          <input type="time" id="cardTime" value="09:00" />
+        </div>
+      </div>
+  
+      <div class="color-section">
+        <label for="cardColor">Цвет карточки:</label>
+        <input type="color" id="cardColor" value="#eaf6ff" />
+      </div>
+  
+      <div class="modal-actions">
+        <button id="saveCardBtn">Сохранить</button>
+        <button id="cancelCardBtn">Отмена</button>
+      </div>
+  
+    </div>
+  </div>
+  
+
+
+  <div id="addColumnModal" class="modal hidden">
+    <div class="modal-content">
+      <p style="font-weight: bold; font-size: 1.2rem;">Название новой колонки:</p>
+      <input type="text" id="newColumnName" style="padding: 0.5rem; border-radius: 10px; border: 1px solid #ccc; width: 100%;" />
+      <div style="display: flex; justify-content: space-between; margin-top: 1rem; gap: 1rem;">
+        <button id="confirmAddColumn" style="background-color: #0077cc; color: white; padding: 0.6rem 1.2rem; border: none; border-radius: 10px;">Сохранить</button>
+        <button id="cancelAddColumn" style="background-color: #e0e0e0; color: #333; padding: 0.6rem 1.2rem; border: none; border-radius: 10px;">Отмена</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="editColumnModal" class="modal hidden">
+    <div class="modal-content">
+      <p style="font-weight: bold; font-size: 1.2rem;">Новое название колонки:</p>
+      <input type="text" id="editColumnName" style="padding: 0.5rem; border-radius: 10px; border: 1px solid #ccc; width: 100%;" />
+      <div style="display: flex; justify-content: space-between; margin-top: 1rem; gap: 1rem;">
+        <button id="confirmEditColumn" style="background-color: #0077cc; color: white; padding: 0.6rem 1.2rem; border: none; border-radius: 10px;">Сохранить</button>
+        <button id="cancelEditColumn" style="background-color: #e0e0e0; color: #333; padding: 0.6rem 1.2rem; border: none; border-radius: 10px;">Отмена</button>
+      </div>
+    </div>
+  </div>
+  
+  
+
+  <!-- Календарь -->
+  <div id="calendarView" class="hidden">
+    <div id="calendar"></div>
+    <button id="backToBoardBtn">← Назад к доске</button>
+    <div id="calendarControls" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem; padding: 1rem 2rem 1rem 1rem;">
+      <div style="display: flex; gap: 0.5rem;">
+        <button id="monthViewBtn" class="calendar-toggle">Месяц</button>
+        <button id="weekViewBtn" class="calendar-toggle">Неделя</button>
+      </div>
+      <select id="tagFilter" class="calendar-toggle">
+        <option value="">Все теги</option>
+        <option value="важно">важно</option>
+        <option value="срочно">срочно</option>
+        <option value="личное">личное</option>
+        <option value="другое">другое</option>
+      </select>
+    </div>
+    
+    <!-- Попап для просмотра карточки -->
+    <div id="cardViewPopup" class="modal hidden">
+      <div class="modal-content card-view-popup">
+        <div class="popup-header">
+          <h3 id="popupCardTitle"></h3>
+          <button id="closePopupBtn" class="close-btn">✕</button>
+        </div>
+        <div class="popup-content">
+          <div class="popup-section">
+            <label>Описание:</label>
+            <p id="popupCardDescription" class="popup-description"></p>
+          </div>
+          <div class="popup-section">
+            <label>Дата и время:</label>
+            <p id="popupCardDateTime"></p>
+          </div>
+          <div class="popup-section">
+            <label>Колонка:</label>
+            <p id="popupCardColumn"></p>
+          </div>
+          <div class="popup-section">
+            <label>Теги:</label>
+            <p id="popupCardTags"></p>
+          </div>
+        </div>
+        <div class="popup-actions">
+          <button id="editCardFromPopupBtn" class="edit-btn">Редактировать</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  
+  
+
+  <!-- Таблица -->
+  <div id="tableView" class="hidden">
+    <button id="backFromTableBtn">← Назад к доске</button>
+    <table>
+      <thead>
+        <tr>
+          <th>Задача</th>
+          <th>Колонка</th>
+          <th>Дата</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+    <!-- Модалка подтверждения удаления доски -->
+  <div id="deleteBoardModal" class="modal hidden">
+    <div class="modal-content">
+      <p>Вы уверены, что хотите удалить эту доску?</p>
+      <div style="display: flex; justify-content: space-between; gap: 1rem;">
+        <button id="confirmDeleteBtn">Да</button>
+        <button id="cancelDeleteBtn">Нет</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- JS -->
+  <script src="script.js"></script>
+</body>
+</html>

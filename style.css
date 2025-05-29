@@ -1,0 +1,973 @@
+/* @import url('https://fonts.cdnfonts.com/css/winky-rough'); */
+
+body {
+  font-family: 'Neucha', sans-serif;
+  background: linear-gradient(135deg, #e0f7ff, #d0eaff);
+  margin: 0;
+  padding: 0;
+}
+
+.hidden {
+  display: none !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
+
+.fade-in {
+  animation: fadeIn 1s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.start-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 1rem;
+  text-align: center;
+  min-height: 100vh;
+  justify-content: center;
+}
+
+.big-title {
+  font-size: 3rem;
+  margin-bottom: 2rem;
+  color: #0077cc;
+}
+
+.create-board {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+#createBoardBtn {
+  padding: 0.7rem;
+  border: none;
+  border-radius: 10px;
+  background: #0077cc;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+#createBoardBtn:hover {
+  background: #005fa3;
+}
+
+#boardName {
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+}
+
+.choose-title {
+  margin-top: 3rem;
+  font-size: 1.5rem;
+  color: #005fa3;
+}
+
+.board-list {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+
+.board-item {
+  position: relative;
+  padding: 0.8rem 1.2rem;
+  border: 2px solid #0077cc;
+  border-radius: 12px;
+  background-color: white;
+  color: #0077cc;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+  display: inline-block;
+}
+
+.board-button {
+  background: #0077cc;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0.7rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  position: relative;
+  transition: 0.3s;
+  padding-right: 2.2rem; /* пространство под крестик */
+}
+
+.board-button:hover {
+  background: #005fa3;
+}
+
+.delete-board-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 0.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  display: none;
+  padding: 2px;
+  line-height: 1;
+  z-index: 2;
+}
+
+.board-item:hover .delete-board-btn {
+  display: block;
+}
+
+.board-item:hover {
+  background-color: #0077cc;
+  color: white;
+}
+
+.board-name {
+  pointer-events: auto;
+  z-index: 1;
+}
+/* 
+.board-list button {
+  background: white;
+  border: 2px solid #0077cc;
+  border-radius: 10px;
+  padding: 0.8rem 1.2rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.3s;
+} */
+
+.board-list button:hover {
+  background: #0077cc;
+  color: red;
+}
+
+/* 🛠 Главная доска и layout */
+.board {
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.sidebar {
+  background: #d4ebff;
+  border-radius: 16px;
+  padding: 1rem;
+  width: 240px;
+  min-width: 240px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.sidebar-btn {
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  font-weight: bold;
+  background-color: #e9f4ff;
+  color: #004d80;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-align: left;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.sidebar-btn:hover {
+  background-color: #cbe5ff;
+}
+
+.board-content {
+  flex-grow: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1rem;
+}
+
+.columns-container {
+  flex-grow: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem;
+}
+
+.columns {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.column {
+  flex: 0 0 260px;
+  background: white;
+  padding: 1rem;
+  border-radius: 15px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.column-title {
+  font-weight: 800;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* 🔹 это двигает кнопку вправо */
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+}
+
+
+
+.card-text {
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.15); /* мягкая тень */
+  font-weight: 500;
+}
+
+
+.card-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.card {
+  background: #eaf6ff;
+  padding: 0.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  position: relative;
+}
+
+.card-date {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.delete-btn {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+  background: red;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.add-card-btn {
+  margin-top: 0.5rem;
+  padding: 0.6rem 1rem;
+  width: 100%;
+  background: #0077cc;
+  color: white;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.add-card-btn::before {
+  content: "+";
+  font-size: 1.2rem;
+}
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal.hidden {
+  display: none !important;
+}
+
+.modal-content {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 350px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+#cardText,
+#cardDate {
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  font-family: 'Fredoka', sans-serif;
+  resize: none;
+}
+
+#cardDescription {
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  font-family: 'Fredoka', sans-serif;
+  resize: vertical;
+  min-height: 60px;
+}
+
+#customTagInput {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  width: 100%;
+}
+
+
+#saveCardBtn,
+#cancelCardBtn {
+  padding: 0.7rem;
+  font-size: 1rem;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+#saveCardBtn {
+  background-color: #0077cc;
+  color: white;
+}
+
+#saveCardBtn:hover {
+  background-color: #005fa3;
+}
+
+#cancelCardBtn {
+  background-color: #e0e0e0;
+  color: #333;
+}
+
+#cancelCardBtn:hover {
+  background-color: #cccccc;
+}
+
+#cardDate {
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  font-family: 'Fredoka', sans-serif;
+  background-color: white;
+  color: #333;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+#cardDate:hover {
+  border-color: #0077cc;
+}
+
+
+/* Календарь */
+#calendarView {
+  padding: 1rem;
+  position: relative;
+}
+
+#calendar {
+  max-width: 1000px;
+  margin: 2rem auto;
+  background: white;
+  padding: 1rem;
+  border-radius: 15px;
+  min-height: 600px;
+  overflow: hidden;
+}
+
+#backToBoardBtn {
+  padding: 0.7rem 1.2rem;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #004d80;
+  background-color: #e9f4ff;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: absolute;
+  top: 3rem;
+  left: 1rem;
+  z-index: 10;
+}
+
+#backToBoardBtn:hover {
+  background-color: #cbe5ff;
+}
+
+/* Таблица */
+#tableView {
+  position: relative;
+  padding: 1rem;
+}
+
+#tableView th,
+#tableView td {
+  padding: 0.7rem 1rem;
+  border: 1px solid #cccccc;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+#tableView th:nth-child(1),
+#tableView td:nth-child(1) {
+  width: 40%;
+}
+
+#tableView th:nth-child(2),
+#tableView td:nth-child(2) {
+  width: 35%;
+}
+
+#tableView th:nth-child(3),
+#tableView td:nth-child(3) {
+  width: 25%;
+}
+
+
+#backFromTableBtn {
+  padding: 0.7rem 1.2rem;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #004d80;
+  background-color: #e9f4ff;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: absolute;
+  top: 3rem;
+  left: 1rem;
+  z-index: 10;
+}
+
+#backFromTableBtn:hover {
+  background-color: #cbe5ff;
+}
+
+#tableView table {
+  width: 100%;
+  max-width: 1000px;
+  margin: 2rem auto;
+  background: white;
+  padding: 1rem;
+  border-radius: 15px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  min-height: 400px;
+  border-collapse: collapse;
+  overflow: hidden;
+}
+
+
+
+#tableView thead {
+  background: #d0eaff;
+}
+
+#tableView th,
+#tableView td {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  text-align: left;
+}
+
+
+/* Экран настройки колонок */
+#columnSetup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  text-align: center;
+  padding: 2rem;
+  background: linear-gradient(135deg, #e0f7ff, #d0eaff);
+}
+
+#columnSetup h1 {
+  font-size: 2.5rem;
+  color: #004d80;
+  margin-bottom: 2rem;
+}
+
+.column-input {
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  width: 250px;
+}
+
+#setupColumnsBtn {
+  padding: 0.7rem 1.5rem;
+  font-size: 1rem;
+  background-color: #0077cc;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+#setupColumnsBtn:hover {
+  background-color: #005fa3;
+}
+
+.error-message {
+  color: red;
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
+}
+
+input.error {
+  border: 2px solid red;
+}
+
+#deleteBoardModal .modal-content {
+  max-width: 350px;
+  width: 100%;
+  padding: 2rem;
+  background: white;
+  border-radius: 20px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+#deleteBoardModal p {
+  font-weight: bold;
+  text-transform: uppercase;
+  font-size: 1.1rem;
+  margin-bottom: 1.5rem;
+}
+
+
+  #deleteBoardModal button {
+    padding: 0.7rem 2rem;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 1rem;
+    margin: 0 0.5rem;
+    min-width: 100px;
+  }
+
+  #confirmDeleteBtn {
+    background-color: #d9534f; /* красная */
+    color: white;
+  }
+
+  #cancelDeleteBtn {
+    background-color: #5cb85c; /* зелёная */
+    color: white;
+  }
+
+  #addColumnModal input {
+    padding: 0.7rem;
+    border-radius: 10px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    width: 100%;
+  }
+
+  #addColumnModal .modal-content {
+    align-items: center;
+    text-align: center;
+  }
+  
+  #addColumnModal p {
+    margin: 0;
+    font-weight: bold;
+    font-size: 1.2rem;
+    text-align: center;
+    width: 100%;
+  }
+  
+  #addColumnModal input {
+    width: 100%;
+    max-width: 90%;
+    text-align: center;
+  }
+  
+  #editColumnModal .modal-content {
+    align-items: center;
+    text-align: center;
+  }
+  
+  #editColumnModal p {
+    margin: 0;
+    font-weight: bold;
+    font-size: 1.2rem;
+    text-align: center;
+    width: 100%;
+  }
+  
+  #editColumnModal input {
+    width: 100%;
+    max-width: 90%;
+    text-align: center;
+  }
+  
+  
+  #confirmAddColumn {
+    background-color: #0077cc;
+    color: white;
+  }
+  
+  #cancelAddColumn {
+    background-color: #ccc;
+    color: black;
+  }
+  
+
+/* Общий шрифт только для карточек */
+.card {
+  font-family: Arial, sans-serif; /* или любой другой, например 'Roboto' */
+}
+
+/* Название карточки */
+.card-text {
+  font-weight: bold;
+  font-size: 1rem;
+  text-shadow: none; /* убираем тень, если мешает */
+}
+
+/* Дата */
+.card-date {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* Теги */
+.card-tags {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: black;
+  margin-top: 0.3rem;
+}
+
+/* Описание (если всё-таки появится — для модалки или др. случаев) */
+.card-description {
+  font-weight: normal;
+  font-size: 0.8rem;
+  color: #444;
+  margin-top: 0.3rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.column {
+  --column-color: #eaf6ff;
+}
+
+.card {
+  background: var(--column-color);
+}
+
+
+
+.color-picker {
+
+  border: none;
+
+  background-size: 20px 20px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 50%;
+  background-color: transparent;
+}
+.color-picker::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.color-picker::-webkit-color-swatch {
+  border: none;
+}
+
+#calendarControls {
+  position: absolute;
+  top: 30px;
+  right: 0px; /* отступ от правого края */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  z-index: 1000;
+}
+
+
+#calendarControls button,
+#calendarControls select {
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-family: 'Winky Rough', sans-serif;
+  font-size: 14px;
+  border: none;
+  background-color: #005fa3;
+  color: white;
+  cursor: pointer;
+  box-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+#calendarControls button:hover {
+  background-color: #005fa3;
+}
+.calendar-controls {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  padding: 0 1rem 1rem;
+}
+
+#tagFilter {
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-family: 'Neucha', sans-serif;
+  background-color: white;
+  color: #005fa3;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-right: auto;
+}
+
+#calendarControls .calendar-toggle {
+  display: flex;
+  gap: 10px;
+}
+
+.calendar-toggle:hover {
+  background-color: #005fa3;
+}
+
+#calendarControls select {
+  background-color: white;
+  color: #005fa3;;
+  border: 2px solid #005fa3;
+}
+
+.date-time-section {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.date-field, .time-field {
+  flex: 1;
+}
+
+.date-field label, .time-field label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #333;
+  font-weight: 500;
+}
+
+#cardDate, #cardTime {
+  width: 100%;
+  padding: 0.7rem;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+  font-family: 'Fredoka', sans-serif;
+  background-color: white;
+  color: #333;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+#cardDate:hover, #cardTime:hover {
+  border-color: #0077cc;
+}
+
+/* Стили для временной сетки */
+.fc-timegrid-slot {
+  height: 40px !important;
+  border-bottom: 1px solid #eee !important;
+}
+
+/* Стили для заголовков времени */
+.fc-timegrid-slot-label {
+  font-size: 0.85em;
+  color: #666;
+  vertical-align: middle;
+}
+
+/* Стили для событий */
+.fc-timegrid-event {
+  border-radius: 6px !important;
+  padding: 2px 4px !important;
+  margin: 1px 1px !important;
+}
+
+/* Стили для заголовков дней недели */
+.fc-col-header-cell {
+  padding: 8px 0 !important;
+  background-color: #f8f9fa !important;
+  border-bottom: 2px solid #dee2e6 !important;
+}
+
+/* Стили для текущего дня */
+.fc-day-today {
+  background-color: rgba(0,119,204,0.05) !important;
+}
+
+/* Стили для временной шкалы */
+.fc-timegrid-axis {
+  padding: 0 8px !important;
+  border-right: 1px solid #dee2e6 !important;
+}
+
+/* Убираем лишние границы */
+.fc-theme-standard td, .fc-theme-standard th {
+  border-color: #dee2e6 !important;
+}
+
+/* Стили для текущего времени */
+.fc-timegrid-now-indicator-line {
+  border-color: #dc3545 !important;
+}
+
+.fc-timegrid-now-indicator-arrow {
+  border-color: #dc3545 !important;
+  border-width: 5px !important;
+}
+
+.card-view-popup {
+  max-width: 500px !important;
+  width: 90% !important;
+}
+
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #eee;
+}
+
+.popup-header h3 {
+  margin: 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.close-btn:hover {
+  background: #f0f0f0;
+  color: #333;
+}
+
+.popup-content {
+  margin-bottom: 1rem;
+}
+
+.popup-section {
+  margin-bottom: 1rem;
+}
+
+.popup-section label {
+  display: block;
+  font-weight: bold;
+  color: #666;
+  margin-bottom: 0.3rem;
+}
+
+.popup-section p {
+  margin: 0;
+  color: #333;
+  line-height: 1.4;
+}
+
+.popup-description {
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 4px;
+}
+
+.popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 1rem;
+  border-top: 1px solid #eee;
+}
+
+.edit-btn {
+  background: #0077cc;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.edit-btn:hover {
+  background: #005fa3;
+}
