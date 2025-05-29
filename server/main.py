@@ -163,20 +163,24 @@ async def sync_boards(boards: dict):
     return {"message": "Boards synchronized successfully"}
 
 @app.post("/test-notification")
-async def test_notification():
+async def test_notification(github_username: str):
     try:
-        # Получаем все подписки
+        # Получаем подписку конкретного пользователя
         db = SessionLocal()
-        subscriptions = db.query(UserSubscription).all()
+        subscription = db.query(UserSubscription).filter(
+            UserSubscription.github_username == github_username
+        ).first()
         
-        # Отправляем тестовое уведомление каждому подписчику
-        for sub in subscriptions:
-            await bot.send_message(
-                chat_id=sub.telegram_chat_id,
-                text="🔔 Тестовое уведомление!\n\nЭто тестовое сообщение для проверки работы системы уведомлений."
-            )
+        if not subscription:
+            return {"status": "error", "message": "Пользователь не найден"}
         
-        return {"status": "success", "message": "Тестовые уведомления отправлены"}
+        # Отправляем тестовое уведомление только этому пользователю
+        await bot.send_message(
+            chat_id=subscription.telegram_chat_id,
+            text="🔔 Тестовое уведомление!\n\nЭто тестовое сообщение для проверки работы системы уведомлений."
+        )
+        
+        return {"status": "success", "message": "Тестовое уведомление отправлено"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
     finally:
