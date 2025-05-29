@@ -774,7 +774,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!githubUsername) return;
 
       // Открываем Telegram бота в новом окне
-      window.open('https://t.me/TrelloCloneBot', '_blank');
+      window.open('https://t.me/trello2_notification_bot', '_blank');
       
       // Показываем инструкции
       alert(
