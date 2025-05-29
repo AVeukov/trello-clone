@@ -792,15 +792,11 @@ document.addEventListener('DOMContentLoaded', () => {
     testNotificationBtn.className = 'sidebar-btn';
     testNotificationBtn.onclick = async () => {
       try {
-        const githubUsername = prompt('Введите ваш GitHub логин для тестирования уведомлений:');
-        if (!githubUsername) return;
-
         const response = await fetch(`${config.API_URL}/test-notification`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ github_username: githubUsername })
+          }
         });
         const result = await response.json();
         if (result.status === 'success') {
