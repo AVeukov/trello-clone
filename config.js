@@ -1,3 +1,3 @@
 const config = {
-    API_URL: 'http://localhost:8000' // Замените на ваш IP-адрес или домен сервера
+    API_URL: 'https://script.google.com/macros/s/AKfycbxfY7NX11SZTUPTr_4AAuBBUBvreQAbiooXKgRaPC0USQRsrOMfP6HfXz3OEfLPeEGp/exec'
 }; 

@@ -792,13 +792,7 @@ document.addEventListener('DOMContentLoaded', () => {
     testNotificationBtn.className = 'sidebar-btn';
     testNotificationBtn.onclick = async () => {
       try {
-        const response = await fetch(`${config.API_URL}/test-notification`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        const result = await response.json();
+        const result = await sendTelegramNotification('Тестовое уведомление', new Date().toISOString());
         if (result.status === 'success') {
           alert('Тестовое уведомление отправлено! Проверьте Telegram.');
         } else {
@@ -813,17 +807,8 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function sendTelegramNotification(task, deadline) {
-  const scriptUrl = "https://script.google.com/macros/s/AKfycbxfY7NX11SZTUPTr_4AAuBBUBvreQAbiooXKgRaPC0USQRsrOMfP6HfXz3OEfLPeEGp/exec";
-  
   try {
-    // Сначала отправляем OPTIONS-запрос (preflight)
-    await fetch(scriptUrl + "?preflight=true", {
-      method: 'OPTIONS',
-      mode: 'cors'
-    });
-
-    // Затем основной POST-запрос
-    const response = await fetch(scriptUrl, {
+    const response = await fetch(config.API_URL, {
       method: 'POST',
       mode: 'cors',
       headers: {
@@ -833,30 +818,10 @@ async function sendTelegramNotification(task, deadline) {
     });
     
     const result = await response.json();
-    
-    // Обработка кастомных заголовков
-    if (result.__headers__) {
-      console.log('CORS headers:', result.__headers__);
-      delete result.__headers__;
-    }
-    
     if (result.error) throw new Error(result.error);
-    
-    console.log('Успешно:', result);
     return result;
-    
   } catch (error) {
     console.error('Ошибка:', error);
     throw error;
   }
-}
-
-function sendViaJsonp(task, deadline) {
-  return new Promise((resolve) => {
-    window.handleTelegramResponse = resolve;
-    const script = document.createElement('script');
-    script.src = `${scriptUrl}?callback=handleTelegramResponse&task=${encodeURIComponent(task)}&deadline=${encodeURIComponent(deadline)}`;
-    document.body.appendChild(script);
-    setTimeout(() => script.remove(), 1000);
-  });
 }
