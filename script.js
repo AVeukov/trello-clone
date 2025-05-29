@@ -792,8 +792,11 @@ document.addEventListener('DOMContentLoaded', () => {
     testNotificationBtn.className = 'sidebar-btn';
     testNotificationBtn.onclick = async () => {
       try {
-        const response = await fetch('http://localhost:8000/test-notification', {
-          method: 'POST'
+        const response = await fetch(`${config.API_URL}/test-notification`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
         });
         const result = await response.json();
         if (result.status === 'success') {
