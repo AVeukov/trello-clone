@@ -789,7 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Добавляем кнопку для тестирования уведомлений
     const testNotificationBtn = document.createElement('button');
     testNotificationBtn.textContent = '🔔 Тест уведомлений';
-    testNotificationBtn.className = 'test-notification-btn';
+    testNotificationBtn.className = 'sidebar-btn';
     testNotificationBtn.onclick = async () => {
       try {
         const response = await fetch('http://localhost:8000/test-notification', {

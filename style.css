@@ -192,10 +192,16 @@ body {
   transition: background-color 0.2s ease;
   text-align: left;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  width: 100%;
+  margin-bottom: 0.5rem;
 }
 
 .sidebar-btn:hover {
   background-color: #cbe5ff;
+}
+
+.sidebar-btn:last-child {
+  margin-bottom: 0;
 }
 
 .board-content {
