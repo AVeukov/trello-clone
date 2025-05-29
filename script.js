@@ -736,13 +736,6 @@ document.addEventListener('DOMContentLoaded', () => {
     mainBoard.classList.add('hidden');
     calendarView.classList.remove('hidden');
     renderCalendar();
-    document.getElementById('monthViewBtn')?.addEventListener('click', () => {
-      window.currentCalendar?.changeView('dayGridMonth');
-    });
-    
-    document.getElementById('weekViewBtn')?.addEventListener('click', () => {
-      window.currentCalendar?.changeView('timeGridWeek');
-    });
     
     document.getElementById('tagFilter')?.addEventListener('change', e => {
       const selectedTag = e.target.value;
