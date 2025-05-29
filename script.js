@@ -462,8 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
       editable: true,
       headerToolbar: {
         left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek'
+        center: 'title'
       },
       slotMinTime: '00:00:00',
       slotMaxTime: '24:00:00',
