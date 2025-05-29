@@ -315,7 +315,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const color = getComputedStyle(column).getPropertyValue('--column-color').trim();
       columns.push({ title: columnTitle, color, cards });
-
     });
   
     boards[currentBoardId] = {
@@ -323,9 +322,53 @@ document.addEventListener('DOMContentLoaded', () => {
       columns
     };
     saveAllBoards(boards);
+    
+    // Синхронизация с сервером
+    syncWithServer(boards);
   }
   
-  
+  // Функция синхронизации с сервером
+  async function syncWithServer(boards) {
+    try {
+      const response = await fetch(`${config.API_URL}/sync-boards`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(boards)
+      });
+      
+      if (!response.ok) {
+        throw new Error('Ошибка синхронизации с сервером');
+      }
+      
+      console.log('Данные успешно синхронизированы с сервером');
+    } catch (error) {
+      console.error('Ошибка при синхронизации:', error);
+    }
+  }
+
+  // Функция загрузки данных с сервера
+  async function loadFromServer() {
+    try {
+      const response = await fetch(`${config.API_URL}/get-boards`);
+      if (!response.ok) {
+        throw new Error('Ошибка загрузки данных с сервера');
+      }
+      
+      const serverBoards = await response.json();
+      if (Object.keys(serverBoards).length > 0) {
+        // Если на сервере есть данные, используем их
+        saveAllBoards(serverBoards);
+        renderBoardList();
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке данных с сервера:', error);
+    }
+  }
+
+  // Загружаем данные с сервера при старте
+  loadFromServer();
 
   saveCardBtn.onclick = () => {
     const text = cardText.value.trim();

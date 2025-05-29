@@ -151,16 +151,32 @@ async def check_and_send_notifications():
         # Проверяем каждый час
         await asyncio.sleep(3600)
 
-# Запуск проверки уведомлений при старте сервера
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(check_and_send_notifications())
-
 @app.post("/sync-boards")
 async def sync_boards(boards: dict):
     global boards_data
     boards_data = boards
     return {"message": "Boards synchronized successfully"}
+
+@app.get("/get-boards")
+async def get_boards():
+    return boards_data
+
+# Добавляем периодическую синхронизацию
+async def periodic_sync():
+    while True:
+        try:
+            # Здесь можно добавить дополнительную логику синхронизации
+            # например, сохранение в базу данных или другие операции
+            await asyncio.sleep(300)  # Синхронизация каждые 5 минут
+        except Exception as e:
+            print(f"Ошибка при периодической синхронизации: {e}")
+            await asyncio.sleep(60)  # При ошибке ждем минуту
+
+# Запускаем периодическую синхронизацию при старте сервера
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(check_and_send_notifications())
+    asyncio.create_task(periodic_sync())
 
 @app.post("/test-notification")
 async def test_notification():
