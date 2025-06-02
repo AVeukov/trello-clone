@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import os
 from dotenv import load_dotenv
-from main import SessionLocal, UserSubscription
+from models import SessionLocal, UserSubscription
 import logging
 
 # Настройка логирования
@@ -59,6 +59,26 @@ async def handle_github_username(update: Update, context: ContextTypes.DEFAULT_T
         logger.error(f"Ошибка при сохранении подписки: {str(e)}")
         db.rollback()
         await update.message.reply_text("Произошла ошибка при сохранении подписки.")
+    finally:
+        db.close()
+
+async def send_telegram_notification(message: str):
+    """Отправка уведомления в Telegram"""
+    try:
+        bot = Application.builder().token(os.getenv("TELEGRAM_BOT_TOKEN")).build()
+        db = SessionLocal()
+        subscriptions = db.query(UserSubscription).all()
+        
+        for subscription in subscriptions:
+            await bot.bot.send_message(
+                chat_id=subscription.telegram_chat_id,
+                text=message
+            )
+        
+        return True
+    except Exception as e:
+        logger.error(f"Ошибка при отправке уведомления: {str(e)}")
+        return False
     finally:
         db.close()
 

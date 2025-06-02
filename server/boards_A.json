@@ -1,0 +1,33 @@
+{
+  "board-7a19ekwsa": {
+    "name": "2",
+    "columns": [
+      {
+        "title": "Нужно сделать",
+        "color": "#eaf6ff",
+        "cards": [
+          {
+            "text": "wd",
+            "date": "2025-02-12",
+            "time": "09:00",
+            "description": "wd",
+            "tags": [
+              "важно"
+            ],
+            "color": "rgb(234, 246, 255)"
+          }
+        ]
+      },
+      {
+        "title": "В процессе",
+        "color": "#eaf6ff",
+        "cards": []
+      },
+      {
+        "title": "Готово",
+        "color": "#eaf6ff",
+        "cards": []
+      }
+    ]
+  }
+}

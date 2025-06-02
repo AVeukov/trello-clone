@@ -337,59 +337,70 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Функция синхронизации с сервером
   async function syncWithServer(boards) {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.error('Нет токена авторизации');
-      return;
-    }
-
     try {
-      const response = await fetch(`${config.API_URL}/sync-boards`, {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No token found');
+        return;
+      }
+
+      console.log('Syncing boards with server:', boards);
+      const response = await fetch('http://localhost:8000/sync-boards', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': token
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify(boards)
       });
-      
+
       if (!response.ok) {
-        throw new Error('Ошибка синхронизации с сервером');
+        throw new Error('Failed to sync with server');
       }
-      
-      console.log('Данные успешно синхронизированы с сервером');
+      console.log('Sync successful');
     } catch (error) {
-      console.error('Ошибка при синхронизации:', error);
+      console.error('Error syncing with server:', error);
     }
   }
 
   // Функция загрузки данных с сервера
   async function loadFromServer() {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      console.error('Нет токена авторизации');
-      return;
-    }
-
     try {
-      const response = await fetch(`${config.API_URL}/get-boards`, {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.log('No token found, showing auth modal');
+        showAuthModal();
+        return;
+      }
+
+      const response = await fetch('http://localhost:8000/get-boards', {
+        method: 'GET',
         headers: {
-          'Authorization': token
+          'Authorization': `Bearer ${token}`
         }
       });
-      
+
       if (!response.ok) {
-        throw new Error('Ошибка загрузки данных с сервера');
+        if (response.status === 401) {
+          console.log('Unauthorized, redirecting to login');
+          localStorage.removeItem('token');
+          showAuthModal();
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
-      const serverBoards = await response.json();
-      if (Object.keys(serverBoards).length > 0) {
-        // Если на сервере есть данные, используем их
-        saveAllBoards(serverBoards);
+
+      const data = await response.json();
+      if (data.boards) {
+        saveAllBoards(data.boards);
         renderBoardList();
       }
     } catch (error) {
-      console.error('Ошибка при загрузке данных с сервера:', error);
+      console.error('Error loading boards from server:', error);
+      // Показываем уведомление пользователю
+      alert('Ошибка при загрузке досок. Пожалуйста, попробуйте войти снова.');
+      localStorage.removeItem('token');
+      showAuthModal();
     }
   }
 
@@ -881,30 +892,82 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('authModal').classList.add('hidden');
   }
 
+  // Функция для проверки токена
   async function verifyToken(token) {
     try {
-      const response = await fetch(`${config.API_URL}/verify-token`, {
+        const response = await fetch('http://localhost:8000/verify-token', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) {
+                console.log('Token invalid or expired, redirecting to login');
+                localStorage.removeItem('token');
+                showAuthModal();
+                return false;
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('Token verified successfully');
+        return true;
+    } catch (error) {
+        console.error('Error verifying token:', error);
+        localStorage.removeItem('token');
+        showAuthModal();
+        return false;
+    }
+  }
+
+  // Функция для входа
+  async function login(username, password) {
+    try {
+      const response = await fetch('http://localhost:8000/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ token })
+        body: JSON.stringify({ username, password })
       });
-
+      
       if (response.ok) {
         const data = await response.json();
-        localStorage.setItem('token', token);
-        localStorage.setItem('username', data.username);
-        hideAuthModal();
-        loadFromServer();
-      } else {
-        localStorage.removeItem('token');
-        localStorage.removeItem('username');
-        showAuthModal();
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('username', username);
+        return true;
       }
+      return false;
     } catch (error) {
-      console.error('Ошибка при проверке токена:', error);
-      showAuthModal();
+      console.error('Error logging in:', error);
+      return false;
+    }
+  }
+
+  // Функция для регистрации
+  async function register(username, password, email) {
+    try {
+      const response = await fetch('http://localhost:8000/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password, email })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('username', username);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error registering:', error);
+      return false;
     }
   }
 
@@ -925,26 +988,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const username = document.getElementById('loginUsername').value;
     const password = document.getElementById('loginPassword').value;
 
-    try {
-      const response = await fetch(`${config.API_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, password })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('username', data.username);
-        hideAuthModal();
-        loadFromServer();
-      } else {
-        alert(data.error || 'Ошибка при входе');
+    if (await login(username, password)) {
+      hideAuthModal();
+      const boards = await loadFromServer();
+      if (boards) {
+        saveAllBoards(boards);
       }
-    } catch (error) {
-      console.error('Ошибка при входе:', error);
+      renderBoardList();
+    } else {
       alert('Ошибка при входе');
     }
   };
@@ -954,29 +1005,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const email = document.getElementById('registerEmail').value;
     const password = document.getElementById('registerPassword').value;
 
-    try {
-      const response = await fetch(`${config.API_URL}/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ username, email, password })
-      });
-
-      const data = await response.json();
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('username', data.username);
-        hideAuthModal();
-        loadFromServer();
-      } else {
-        alert(data.error || 'Ошибка при регистрации');
+    if (await register(username, password, email)) {
+      hideAuthModal();
+      const boards = await loadFromServer();
+      if (boards) {
+        saveAllBoards(boards);
       }
-    } catch (error) {
-      console.error('Ошибка при регистрации:', error);
+      renderBoardList();
+    } else {
       alert('Ошибка при регистрации');
     }
   };
+
+  // Проверка авторизации при загрузке страницы
+  document.addEventListener('DOMContentLoaded', async () => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      if (await verifyToken(token)) {
+        const boards = await loadFromServer();
+        if (boards) {
+          saveAllBoards(boards);
+        }
+        renderBoardList();
+      } else {
+        showAuthModal();
+      }
+    } else {
+      showAuthModal();
+    }
+  });
 });
 
 async function sendTelegramNotification(task, deadline) {

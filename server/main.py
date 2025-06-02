@@ -1,25 +1,22 @@
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import create_engine, Column, String, Integer
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, Session
-from pydantic import BaseModel
-from datetime import datetime, timedelta
-import os
-from dotenv import load_dotenv
-import telegram
-import asyncio
-from typing import Optional
 import json
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from users import register_user, verify_user, generate_token, verify_token
+import os
+import sqlite3
+import bcrypt
+import jwt
+from datetime import datetime, timedelta
+import logging
 
-# Загрузка переменных окружения
-load_dotenv()
+# Настройка логирования
+logging.basicConfig(
+    filename='server_error.log',
+    level=logging.DEBUG,  # Изменено на DEBUG для более подробного логирования
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
-# Инициализация FastAPI
 app = FastAPI()
 
 # Настройка CORS
@@ -31,263 +28,213 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Настройка кодировки для JSON
-class CustomJSONResponse(JSONResponse):
-    def render(self, content) -> bytes:
-        return json.dumps(
-            content,
-            ensure_ascii=False,
-            indent=2
-        ).encode("utf-8")
+# Секретный ключ для JWT
+SECRET_KEY = "your-secret-key-here"  # В продакшене используйте безопасный ключ
+ALGORITHM = "HS256"
 
-# Настройка базы данных
-SQLALCHEMY_DATABASE_URL = "sqlite:///./notifications.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-# Модель базы данных
-class UserSubscription(Base):
-    __tablename__ = "user_subscriptions"
-    
-    id = Column(Integer, primary_key=True, index=True)
-    github_username = Column(String, unique=True, index=True)
-    telegram_chat_id = Column(String, unique=True, index=True)
-
-# Создание таблиц
-Base.metadata.create_all(bind=engine)
-
-# Pydantic модели
-class SubscriptionCreate(BaseModel):
-    github_username: str
-    telegram_chat_id: str
-
-# Зависимость для получения сессии БД
-def get_db():
-    db = SessionLocal()
+# Функции для работы с базой данных
+def init_db():
     try:
-        yield db
-    finally:
-        db.close()
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+        c.execute('''CREATE TABLE IF NOT EXISTS users
+                     (username TEXT PRIMARY KEY, password TEXT, email TEXT)''')
+        conn.commit()
+        conn.close()
+        logger.info("Database initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing database: {str(e)}")
+        raise
 
-# Инициализация бота
-bot = telegram.Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"))
+# Инициализация базы данных при запуске
+init_db()
 
-# Глобальная переменная для хранения данных досок
-boards_data = {}
+# Функции для работы с JWT
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=7)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
-@app.post("/subscribe")
-async def subscribe(subscription: SubscriptionCreate, db: Session = Depends(get_db)):
-    # Проверка существующей подписки
-    existing = db.query(UserSubscription).filter(
-        UserSubscription.github_username == subscription.github_username
-    ).first()
-    
-    if existing:
-        raise HTTPException(status_code=400, detail="User already subscribed")
-    
-    # Создание новой подписки
-    db_subscription = UserSubscription(
-        github_username=subscription.github_username,
-        telegram_chat_id=subscription.telegram_chat_id
-    )
-    db.add(db_subscription)
-    db.commit()
-    
-    return {"message": "Successfully subscribed"}
-
-@app.post("/send-notification")
-async def send_notification(github_username: str, task_name: str, deadline: str):
-    db = SessionLocal()
+async def get_current_user(token: str):
     try:
-        # Получение chat_id пользователя
-        subscription = db.query(UserSubscription).filter(
-            UserSubscription.github_username == github_username
-        ).first()
-        
-        if not subscription:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Отправка уведомления
-        message = f"⚠️ Напоминание о задаче!\n\nЗадача: {task_name}\nСрок: {deadline}"
-        await bot.send_message(chat_id=subscription.telegram_chat_id, text=message)
-        
-        return {"message": "Notification sent"}
-    finally:
-        db.close()
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        return username
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
-# Функция для проверки и отправки уведомлений
-async def check_and_send_notifications():
-    while True:
-        db = SessionLocal()
+@app.post("/register")
+async def register(request: Request):
+    try:
+        data = await request.json()
+        username = data.get('username')
+        password = data.get('password')
+        email = data.get('email')
+
+        logger.info(f"Attempting to register user: {username}")
+
+        if not all([username, password, email]):
+            logger.error("Missing required fields in registration")
+            raise HTTPException(status_code=400, detail="Missing required fields")
+
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+        
+        # Проверяем, существует ли пользователь
+        c.execute("SELECT username FROM users WHERE username = ?", (username,))
+        if c.fetchone():
+            conn.close()
+            logger.error(f"Username {username} already exists")
+            raise HTTPException(status_code=400, detail="Username already exists")
+        
+        # Хешируем пароль
+        hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+        
+        # Сохраняем пользователя
+        c.execute("INSERT INTO users (username, password, email) VALUES (?, ?, ?)",
+                  (username, hashed_password.decode(), email))
+        conn.commit()
+        conn.close()
+        
+        # Создаем пустой файл для досок пользователя
+        filename = f"boards_{username}.json"
         try:
-            # Получаем все подписки
-            subscriptions = db.query(UserSubscription).all()
-            
-            # Получаем все задачи из localStorage
-            boards_data = {}  # Здесь нужно будет добавить доступ к данным досок
-            
-            for subscription in subscriptions:
-                # Проверяем задачи для каждого пользователя
-                for board in boards_data.values():
-                    for column in board.get('columns', []):
-                        for card in column.get('cards', []):
-                            if not card.get('date'):
-                                continue
-                                
-                            deadline = datetime.strptime(card['date'], '%Y-%m-%d')
-                            tomorrow = datetime.now() + timedelta(days=1)
-                            
-                            # Если дедлайн завтра, отправляем уведомление
-                            if deadline.date() == tomorrow.date():
-                                try:
-                                    message = (
-                                        f"⚠️ Напоминание о задаче!\n\n"
-                                        f"Задача: {card['text']}\n"
-                                        f"Колонка: {column['title']}\n"
-                                        f"Срок: {card['date']} {card.get('time', '09:00')}\n"
-                                    )
-                                    if card.get('description'):
-                                        message += f"\nОписание: {card['description']}"
-                                        
-                                    await bot.send_message(
-                                        chat_id=subscription.telegram_chat_id,
-                                        text=message
-                                    )
-                                except Exception as e:
-                                    print(f"Ошибка отправки уведомления: {e}")
-                                    
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump({}, f)
+            logger.info(f"Created empty boards file for user {username}")
         except Exception as e:
-            print(f"Ошибка проверки уведомлений: {e}")
-        finally:
-            db.close()
-            
-        # Проверяем каждый час
-        await asyncio.sleep(3600)
+            logger.error(f"Error creating boards file for user {username}: {str(e)}")
+        
+        # Создаем токен
+        access_token = create_access_token({"sub": username})
+        logger.info(f"Successfully registered user: {username}")
+        return {"access_token": access_token, "token_type": "bearer"}
+    except Exception as e:
+        logger.error(f"Error in registration: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/login")
+async def login(request: Request):
+    try:
+        data = await request.json()
+        username = data.get('username')
+        password = data.get('password')
+
+        if not all([username, password]):
+            raise HTTPException(status_code=400, detail="Missing required fields")
+
+        conn = sqlite3.connect('users.db')
+        c = conn.cursor()
+        
+        # Получаем пользователя
+        c.execute("SELECT password FROM users WHERE username = ?", (username,))
+        result = c.fetchone()
+        conn.close()
+        
+        if not result:
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+        
+        stored_password = result[0]
+        
+        # Проверяем пароль
+        if not bcrypt.checkpw(password.encode(), stored_password.encode()):
+            raise HTTPException(status_code=401, detail="Invalid username or password")
+        
+        # Создаем токен
+        access_token = create_access_token({"sub": username})
+        return {"access_token": access_token, "token_type": "bearer"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/verify-token")
+async def verify_token(request: Request):
+    try:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        username = await get_current_user(token)
+        return {"username": username}
+    except Exception as e:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 @app.post("/sync-boards")
-async def sync_boards(boards: dict):
-    global boards_data
-    boards_data = boards
-    return CustomJSONResponse(content={"message": "Boards synchronized successfully"})
+async def sync_boards(request: Request):
+    try:
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        username = await get_current_user(token)
+        data = await request.json()
+        
+        logger.info(f"Syncing boards for user {username}")
+        logger.debug(f"Boards data: {json.dumps(data)}")
+        
+        # Сохраняем данные в файл
+        filename = f"boards_{username}.json"
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            logger.info(f"Successfully saved boards for user {username}")
+            return {"status": "success"}
+        except Exception as e:
+            logger.error(f"Error saving boards to file: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error saving boards: {str(e)}")
+    except Exception as e:
+        logger.error(f"Error in sync_boards: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/get-boards")
-async def get_boards():
-    return CustomJSONResponse(content=boards_data)
-
-# Добавляем периодическую синхронизацию
-async def periodic_sync():
-    while True:
-        try:
-            # Здесь можно добавить дополнительную логику синхронизации
-            # например, сохранение в базу данных или другие операции
-            await asyncio.sleep(300)  # Синхронизация каждые 5 минут
-        except Exception as e:
-            print(f"Ошибка при периодической синхронизации: {e}")
-            await asyncio.sleep(60)  # При ошибке ждем минуту
-
-# Запускаем периодическую синхронизацию при старте сервера
-@app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(check_and_send_notifications())
-    asyncio.create_task(periodic_sync())
-
-@app.post("/test-notification")
-async def test_notification():
+async def get_boards(request: Request):
     try:
-        # Получаем все подписки
-        db = SessionLocal()
-        subscriptions = db.query(UserSubscription).all()
+        token = request.headers.get("Authorization", "").replace("Bearer ", "")
+        if not token:
+            logger.error("No token provided in request")
+            raise HTTPException(status_code=401, detail="No token provided")
+            
+        username = await get_current_user(token)
+        logger.info(f"Getting boards for user: {username}")
         
-        # Отправляем тестовое уведомление каждому подписчику
-        for sub in subscriptions:
-            await bot.send_message(
-                chat_id=sub.telegram_chat_id,
-                text="🔔 Тестовое уведомление!\n\nЭто тестовое сообщение для проверки работы системы уведомлений."
-            )
+        # Читаем данные из файла
+        filename = f"boards_{username}.json"
+        logger.info(f"Attempting to read boards from {filename}")
         
-        return {"status": "success", "message": "Тестовые уведомления отправлены"}
+        if not os.path.exists(filename):
+            logger.info(f"File {filename} does not exist, creating empty file")
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    json.dump({}, f)
+                logger.info(f"Created empty boards file for user {username}")
+                return {"boards": {}}
+            except Exception as e:
+                logger.error(f"Error creating empty boards file: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Error creating boards file: {str(e)}")
+            
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            logger.info(f"Successfully read boards for user {username}")
+            logger.debug(f"Boards data: {json.dumps(data)}")
+            return {"boards": data}
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding JSON from file: {str(e)}")
+            # Если файл поврежден, создаем новый
+            try:
+                with open(filename, 'w', encoding='utf-8') as f:
+                    json.dump({}, f)
+                logger.info(f"Created new boards file after JSON decode error for user {username}")
+                return {"boards": {}}
+            except Exception as write_error:
+                logger.error(f"Error creating new boards file after JSON decode error: {str(write_error)}")
+                raise HTTPException(status_code=500, detail="Error recovering from corrupted boards file")
+        except Exception as e:
+            logger.error(f"Error reading file: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error reading boards: {str(e)}")
+    except HTTPException as he:
+        raise he
     except Exception as e:
-        return {"status": "error", "message": str(e)}
-    finally:
-        db.close()
+        logger.error(f"Unexpected error in get_boards: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
 
-@app.route('/register', methods=['POST'])
-def register():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    email = data.get('email')
-    
-    if not username or not password:
-        return jsonify({'error': 'Необходимо указать имя пользователя и пароль'}), 400
-    
-    if register_user(username, password, email):
-        token = generate_token(username)
-        return jsonify({'token': token, 'username': username}), 200
-    else:
-        return jsonify({'error': 'Пользователь с таким именем уже существует'}), 400
-
-@app.route('/login', methods=['POST'])
-def login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    
-    if not username or not password:
-        return jsonify({'error': 'Необходимо указать имя пользователя и пароль'}), 400
-    
-    if verify_user(username, password):
-        token = generate_token(username)
-        return jsonify({'token': token, 'username': username}), 200
-    else:
-        return jsonify({'error': 'Неверное имя пользователя или пароль'}), 401
-
-@app.route('/verify-token', methods=['POST'])
-def verify_token_route():
-    data = request.get_json()
-    token = data.get('token')
-    
-    if not token:
-        return jsonify({'error': 'Токен не предоставлен'}), 400
-    
-    username = verify_token(token)
-    if username:
-        return jsonify({'username': username}), 200
-    else:
-        return jsonify({'error': 'Недействительный токен'}), 401
-
-# Модифицируем существующие эндпоинты для работы с пользователями
-@app.route('/sync-boards', methods=['POST'])
-def sync_boards():
-    token = request.headers.get('Authorization')
-    if not token:
-        return jsonify({'error': 'Требуется авторизация'}), 401
-    
-    username = verify_token(token)
-    if not username:
-        return jsonify({'error': 'Недействительный токен'}), 401
-    
-    data = request.get_json()
-    filename = f'data/boards_{username}.json'
-    
-    with open(filename, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    
-    return jsonify({'status': 'success'})
-
-@app.route('/get-boards', methods=['GET'])
-def get_boards():
-    token = request.headers.get('Authorization')
-    if not token:
-        return jsonify({'error': 'Требуется авторизация'}), 401
-    
-    username = verify_token(token)
-    if not username:
-        return jsonify({'error': 'Недействительный токен'}), 401
-    
-    filename = f'data/boards_{username}.json'
-    if os.path.exists(filename):
-        with open(filename, 'r', encoding='utf-8') as f:
-            return jsonify(json.load(f))
-    return jsonify({}) 
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1", port=8000) 
