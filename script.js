@@ -499,7 +499,8 @@ document.addEventListener('DOMContentLoaded', () => {
       editable: true,
       headerToolbar: {
         left: 'prev,next today',
-        center: 'title'
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek'
       },
       slotMinTime: '00:00:00',
       slotMaxTime: '24:00:00',
@@ -1034,6 +1035,17 @@ document.addEventListener('DOMContentLoaded', () => {
       showAuthModal();
     }
   });
+
+  // Добавляем кнопку выхода в сайдбар
+  const logoutBtn = document.createElement('button');
+  logoutBtn.textContent = '🚪 Выйти';
+  logoutBtn.className = 'sidebar-btn';
+  logoutBtn.onclick = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    showAuthModal();
+  };
+  document.querySelector('.sidebar').appendChild(logoutBtn);
 });
 
 async function sendTelegramNotification(task, deadline) {

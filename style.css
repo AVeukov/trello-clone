@@ -200,8 +200,8 @@ body {
   background-color: #cbe5ff;
 }
 
-.sidebar-btn:last-child {
-  margin-bottom: 0;
+.sidebar-btn:active {
+  background-color: #b8d9ff;
 }
 
 .board-content {
