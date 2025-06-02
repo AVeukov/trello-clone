@@ -66,6 +66,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const notificationsBtn = document.getElementById('notificationsBtn');
 
+  // Проверяем наличие токена при загрузке
+  const token = localStorage.getItem('token');
+  if (token) {
+    verifyToken(token);
+  } else {
+    showAuthModal();
+  }
+
   function generateId() {
     return 'board-' + Math.random().toString(36).substr(2, 9);
   }
@@ -329,11 +337,18 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Функция синхронизации с сервером
   async function syncWithServer(boards) {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('Нет токена авторизации');
+      return;
+    }
+
     try {
       const response = await fetch(`${config.API_URL}/sync-boards`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': token
         },
         body: JSON.stringify(boards)
       });
@@ -350,8 +365,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Функция загрузки данных с сервера
   async function loadFromServer() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.error('Нет токена авторизации');
+      return;
+    }
+
     try {
-      const response = await fetch(`${config.API_URL}/get-boards`);
+      const response = await fetch(`${config.API_URL}/get-boards`, {
+        headers: {
+          'Authorization': token
+        }
+      });
+      
       if (!response.ok) {
         throw new Error('Ошибка загрузки данных с сервера');
       }
@@ -845,6 +871,112 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     document.querySelector('.sidebar').appendChild(testNotificationBtn);
   }
+
+  // Функции для работы с авторизацией
+  function showAuthModal() {
+    document.getElementById('authModal').classList.remove('hidden');
+  }
+
+  function hideAuthModal() {
+    document.getElementById('authModal').classList.add('hidden');
+  }
+
+  async function verifyToken(token) {
+    try {
+      const response = await fetch(`${config.API_URL}/verify-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('token', token);
+        localStorage.setItem('username', data.username);
+        hideAuthModal();
+        loadFromServer();
+      } else {
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        showAuthModal();
+      }
+    } catch (error) {
+      console.error('Ошибка при проверке токена:', error);
+      showAuthModal();
+    }
+  }
+
+  // Обработчики для форм авторизации
+  document.getElementById('showRegister').onclick = (e) => {
+    e.preventDefault();
+    document.getElementById('loginForm').classList.add('hidden');
+    document.getElementById('registerForm').classList.remove('hidden');
+  };
+
+  document.getElementById('showLogin').onclick = (e) => {
+    e.preventDefault();
+    document.getElementById('registerForm').classList.add('hidden');
+    document.getElementById('loginForm').classList.remove('hidden');
+  };
+
+  document.getElementById('loginBtn').onclick = async () => {
+    const username = document.getElementById('loginUsername').value;
+    const password = document.getElementById('loginPassword').value;
+
+    try {
+      const response = await fetch(`${config.API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('username', data.username);
+        hideAuthModal();
+        loadFromServer();
+      } else {
+        alert(data.error || 'Ошибка при входе');
+      }
+    } catch (error) {
+      console.error('Ошибка при входе:', error);
+      alert('Ошибка при входе');
+    }
+  };
+
+  document.getElementById('registerBtn').onclick = async () => {
+    const username = document.getElementById('registerUsername').value;
+    const email = document.getElementById('registerEmail').value;
+    const password = document.getElementById('registerPassword').value;
+
+    try {
+      const response = await fetch(`${config.API_URL}/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, email, password })
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('username', data.username);
+        hideAuthModal();
+        loadFromServer();
+      } else {
+        alert(data.error || 'Ошибка при регистрации');
+      }
+    } catch (error) {
+      console.error('Ошибка при регистрации:', error);
+      alert('Ошибка при регистрации');
+    }
+  };
 });
 
 async function sendTelegramNotification(task, deadline) {

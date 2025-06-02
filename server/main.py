@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import create_engine, Column, String, Integer
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session
@@ -10,6 +11,10 @@ from dotenv import load_dotenv
 import telegram
 import asyncio
 from typing import Optional
+import json
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from users import register_user, verify_user, generate_token, verify_token
 
 # Загрузка переменных окружения
 load_dotenv()
@@ -25,6 +30,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Настройка кодировки для JSON
+class CustomJSONResponse(JSONResponse):
+    def render(self, content) -> bytes:
+        return json.dumps(
+            content,
+            ensure_ascii=False,
+            indent=2
+        ).encode("utf-8")
 
 # Настройка базы данных
 SQLALCHEMY_DATABASE_URL = "sqlite:///./notifications.db"
@@ -155,11 +169,11 @@ async def check_and_send_notifications():
 async def sync_boards(boards: dict):
     global boards_data
     boards_data = boards
-    return {"message": "Boards synchronized successfully"}
+    return CustomJSONResponse(content={"message": "Boards synchronized successfully"})
 
 @app.get("/get-boards")
 async def get_boards():
-    return boards_data
+    return CustomJSONResponse(content=boards_data)
 
 # Добавляем периодическую синхронизацию
 async def periodic_sync():
@@ -196,4 +210,84 @@ async def test_notification():
     except Exception as e:
         return {"status": "error", "message": str(e)}
     finally:
-        db.close() 
+        db.close()
+
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    email = data.get('email')
+    
+    if not username or not password:
+        return jsonify({'error': 'Необходимо указать имя пользователя и пароль'}), 400
+    
+    if register_user(username, password, email):
+        token = generate_token(username)
+        return jsonify({'token': token, 'username': username}), 200
+    else:
+        return jsonify({'error': 'Пользователь с таким именем уже существует'}), 400
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    
+    if not username or not password:
+        return jsonify({'error': 'Необходимо указать имя пользователя и пароль'}), 400
+    
+    if verify_user(username, password):
+        token = generate_token(username)
+        return jsonify({'token': token, 'username': username}), 200
+    else:
+        return jsonify({'error': 'Неверное имя пользователя или пароль'}), 401
+
+@app.route('/verify-token', methods=['POST'])
+def verify_token_route():
+    data = request.get_json()
+    token = data.get('token')
+    
+    if not token:
+        return jsonify({'error': 'Токен не предоставлен'}), 400
+    
+    username = verify_token(token)
+    if username:
+        return jsonify({'username': username}), 200
+    else:
+        return jsonify({'error': 'Недействительный токен'}), 401
+
+# Модифицируем существующие эндпоинты для работы с пользователями
+@app.route('/sync-boards', methods=['POST'])
+def sync_boards():
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'error': 'Требуется авторизация'}), 401
+    
+    username = verify_token(token)
+    if not username:
+        return jsonify({'error': 'Недействительный токен'}), 401
+    
+    data = request.get_json()
+    filename = f'data/boards_{username}.json'
+    
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    
+    return jsonify({'status': 'success'})
+
+@app.route('/get-boards', methods=['GET'])
+def get_boards():
+    token = request.headers.get('Authorization')
+    if not token:
+        return jsonify({'error': 'Требуется авторизация'}), 401
+    
+    username = verify_token(token)
+    if not username:
+        return jsonify({'error': 'Недействительный токен'}), 401
+    
+    filename = f'data/boards_{username}.json'
+    if os.path.exists(filename):
+        with open(filename, 'r', encoding='utf-8') as f:
+            return jsonify(json.load(f))
+    return jsonify({}) 

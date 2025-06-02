@@ -992,3 +992,46 @@ input.error {
 .test-notification-btn:hover {
     background-color: #45a049;
 }
+
+/* Стили для форм авторизации */
+#authModal .modal-content {
+  max-width: 400px;
+  padding: 20px;
+}
+
+#authModal input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+#authModal button {
+  width: 100%;
+  padding: 10px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 10px 0;
+}
+
+#authModal button:hover {
+  background-color: #0056b3;
+}
+
+#authModal p {
+  text-align: center;
+  margin: 10px 0;
+}
+
+#authModal a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+#authModal a:hover {
+  text-decoration: underline;
+}
