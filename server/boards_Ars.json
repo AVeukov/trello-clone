@@ -1,0 +1,33 @@
+{
+  "board-f32ocihrm": {
+    "name": "wawa",
+    "columns": [
+      {
+        "title": "Нужно сделать",
+        "color": "#eaf6ff",
+        "cards": [
+          {
+            "text": "ewf",
+            "date": "2025-06-10",
+            "time": "09:00",
+            "description": "ewf",
+            "tags": [
+              "важно"
+            ],
+            "color": "rgb(255, 0, 0)"
+          }
+        ]
+      },
+      {
+        "title": "В процессе",
+        "color": "#eaf6ff",
+        "cards": []
+      },
+      {
+        "title": "Готово",
+        "color": "#eaf6ff",
+        "cards": []
+      }
+    ]
+  }
+}
